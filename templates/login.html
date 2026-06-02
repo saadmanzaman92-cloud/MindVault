@@ -18,9 +18,12 @@
       <button class="btn btn-primary btn-block" type="submit">Sign in</button>
     </form>
     <p class="muted" style="margin-top:18px;text-align:center">New here? <a href="{{ url_for('register') }}">Create an account</a></p>
-    <a href="/forgot_password">
-Forgot Password?
-</a>
+  <div style="margin-top:10px;">
+    <a href="{{ url_for('forgot_password') }}"
+       style="color:#7db7ff;text-decoration:none;">
+        Forgot Password?
+    </a>
+</div>
   </div>
 </div>
 {% endblock %}
