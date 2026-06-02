@@ -1,0 +1,101 @@
+{% extends "_app.html" %}
+{% set active='journals' %}
+{% block title %}{{ j.title }} · MindVault{% endblock %}
+{% block content %}
+<div class="editor-shell" data-jid="{{ j.id }}">
+  <div class="editor-head">
+    <input class="editor-title" id="jTitle" value="{{ j.title }}" placeholder="Untitled">
+    <span class="save-badge"><span class="save-dot" id="saveDot"></span><span id="saveText">Saved</span></span>
+    <a href="{{ url_for('journals') }}" class="btn">← All journals</a>
+    <form method="post" action="{{ url_for('journal_delete', jid=j.id) }}" class="inline-form" onsubmit="return confirm('Delete this journal?')">
+      <button class="btn btn-danger">Delete</button>
+    </form>
+  </div>
+
+  <div class="editor-tools" role="toolbar">
+    <button class="tool-btn" data-cmd="bold" title="Bold"><b>B</b></button>
+    <button class="tool-btn" data-cmd="italic" title="Italic"><i>I</i></button>
+    <button class="tool-btn" data-cmd="underline" title="Underline"><u>U</u></button>
+    <button class="tool-btn" data-cmd="strikeThrough" title="Strike"><s>S</s></button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" data-cmd="formatBlock" data-val="H1" title="H1">H1</button>
+    <button class="tool-btn" data-cmd="formatBlock" data-val="H2" title="H2">H2</button>
+    <button class="tool-btn" data-cmd="formatBlock" data-val="H3" title="H3">H3</button>
+    <button class="tool-btn" data-cmd="formatBlock" data-val="P" title="Paragraph">¶</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" data-cmd="insertUnorderedList" title="Bullets">•</button>
+    <button class="tool-btn" data-cmd="insertOrderedList" title="Numbered">1.</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" data-cmd="justifyLeft" title="Left">⯇</button>
+    <button class="tool-btn" data-cmd="justifyCenter" title="Center">≡</button>
+    <button class="tool-btn" data-cmd="justifyRight" title="Right">⯈</button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" data-cmd="undo" title="Undo">↶</button>
+    <button class="tool-btn" data-cmd="redo" title="Redo">↷</button>
+    <div class="tool-sep"></div>
+    <input id="jTags" class="input" placeholder="tags, comma, separated" style="width:200px;height:32px;padding:6px 10px">
+    <select id="jCat" class="input" style="width:160px;height:32px;padding:4px 8px">
+      <option value="">No folder</option>
+      {% for c in categories %}<option value="{{ c.id }}" {% if j.category_id==c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+  </div>
+
+  <div id="editor" class="editor-surface" contenteditable="true">{{ j.content|safe }}</div>
+</div>
+
+<script>
+  const jid = {{ j.id }};
+  const editor = document.getElementById('editor');
+  const titleEl = document.getElementById('jTitle');
+  const tagsEl = document.getElementById('jTags');
+  const catEl = document.getElementById('jCat');
+  const saveDot = document.getElementById('saveDot');
+  const saveText = document.getElementById('saveText');
+
+  tagsEl.value = "{{ j.tags or '' }}";
+
+  document.querySelectorAll('.tool-btn').forEach(b=>{
+    b.addEventListener('click', e=>{
+      e.preventDefault();
+      const cmd = b.dataset.cmd, val = b.dataset.val || null;
+      document.execCommand(cmd, false, val);
+      editor.focus();
+      scheduleSave();
+    });
+  });
+
+  let timer=null, saving=false;
+  function scheduleSave(){
+    saveDot.classList.add('saving'); saveText.textContent='Saving…';
+    clearTimeout(timer);
+    timer = setTimeout(save, 800);
+  }
+  async function save(){
+    saving=true;
+    try{
+      const res = await fetch(`/api/journal/${jid}`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          title: titleEl.value, content: editor.innerHTML,
+          tags: tagsEl.value, category_id: catEl.value || null
+        })
+      });
+      const data = await res.json();
+      saveDot.classList.remove('saving');
+      saveText.textContent = 'Saved · ' + (data.updated_at||'');
+    }catch(e){ saveText.textContent='Save failed'; }
+    saving=false;
+  }
+  ['input','change'].forEach(ev=>{
+    editor.addEventListener(ev, scheduleSave);
+    titleEl.addEventListener(ev, scheduleSave);
+    tagsEl.addEventListener(ev, scheduleSave);
+    catEl.addEventListener(ev, scheduleSave);
+  });
+
+  // ctrl+s
+  document.addEventListener('keydown', e=>{
+    if((e.ctrlKey||e.metaKey) && e.key==='s'){ e.preventDefault(); save(); }
+  });
+</script>
+{% endblock %}

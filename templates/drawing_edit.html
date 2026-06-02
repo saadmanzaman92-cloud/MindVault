@@ -1,0 +1,122 @@
+{% extends "_app.html" %}
+{% set active='drawings' %}
+{% block title %}Drawing · MindVault{% endblock %}
+{% block content %}
+<div class="page-head">
+  <input class="editor-title" id="dTitle" value="{{ drawing.title if drawing else 'Untitled Sketch' }}" style="max-width:360px">
+  <div class="toolbar">
+    <span class="save-badge"><span class="save-dot" id="dDot"></span><span id="dMsg">Ready</span></span>
+    <button class="btn btn-primary" id="saveBtn">💾 Save</button>
+    <a class="btn" href="{{ url_for('drawings') }}">← All drawings</a>
+  </div>
+</div>
+
+<div class="draw-shell">
+  <div class="draw-tools">
+    <div>
+      <label>Tool</label>
+      <div class="tool-group" id="toolGroup">
+        <button class="tool-pick active" data-tool="pen">Pen</button>
+        <button class="tool-pick" data-tool="pencil">Pencil</button>
+        <button class="tool-pick" data-tool="brush">Brush</button>
+        <button class="tool-pick" data-tool="eraser">Eraser</button>
+      </div>
+    </div>
+    <div>
+      <label>Color</label>
+      <input type="color" id="color" value="#0a0d12">
+    </div>
+    <div>
+      <label>Size · <span id="sizeVal">3</span>px</label>
+      <input type="range" id="size" min="1" max="60" value="3">
+    </div>
+    <div>
+      <label>Background</label>
+      <input type="color" id="bg" value="#ffffff">
+    </div>
+    <button class="btn btn-danger" id="clearBtn">🗑 Clear canvas</button>
+    <p class="muted" style="font-size:12px;margin:0">Mouse, touch & stylus supported. Pressure works on supported devices.</p>
+  </div>
+  <div class="draw-canvas-wrap">
+    <canvas id="drawCanvas"></canvas>
+  </div>
+</div>
+
+<script>
+  const drawingId = {{ drawing.id if drawing else 'null' }};
+  const existingImg = "{{ url_for('static', filename='drawings/' ~ drawing.filename) if drawing else '' }}";
+  const canvas = document.getElementById('drawCanvas');
+  const ctx = canvas.getContext('2d');
+  const wrap = canvas.parentElement;
+
+  let tool='pen', color='#0a0d12', size=3, bg='#ffffff';
+  let drawing=false, lastX=0, lastY=0;
+
+  function resize(){
+    const r = wrap.getBoundingClientRect();
+    const dpr = window.devicePixelRatio||1;
+    const data = canvas.width ? ctx.getImageData(0,0,canvas.width,canvas.height) : null;
+    canvas.width = r.width*dpr; canvas.height = r.height*dpr;
+    canvas.style.width = r.width+'px'; canvas.style.height=r.height+'px';
+    ctx.scale(dpr,dpr);
+    ctx.fillStyle = bg; ctx.fillRect(0,0,canvas.width,canvas.height);
+    if(data){ ctx.putImageData(data,0,0); }
+    if(existingImg && !canvas._loaded){
+      const img = new Image(); img.crossOrigin='anonymous';
+      img.onload=()=>{ ctx.drawImage(img,0,0,r.width,r.height); canvas._loaded=true; };
+      img.src = existingImg + '?t='+Date.now();
+    }
+  }
+  window.addEventListener('resize', resize);
+  setTimeout(resize, 30);
+
+  document.querySelectorAll('#toolGroup .tool-pick').forEach(b=>{
+    b.onclick=()=>{document.querySelectorAll('#toolGroup .tool-pick').forEach(x=>x.classList.remove('active'));b.classList.add('active');tool=b.dataset.tool;};
+  });
+  document.getElementById('color').oninput = e=> color=e.target.value;
+  document.getElementById('size').oninput  = e=> { size=+e.target.value; document.getElementById('sizeVal').textContent=size; };
+  document.getElementById('bg').oninput    = e=> { bg=e.target.value; const r=wrap.getBoundingClientRect();
+    const tmp=ctx.getImageData(0,0,canvas.width,canvas.height);
+    ctx.fillStyle=bg; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.putImageData(tmp,0,0);
+  };
+  document.getElementById('clearBtn').onclick=()=>{ const r=wrap.getBoundingClientRect(); ctx.clearRect(0,0,canvas.width,canvas.height); ctx.fillStyle=bg; ctx.fillRect(0,0,canvas.width,canvas.height); };
+
+  function pos(e){
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX-r.left, y: t.clientY-r.top, p: e.pressure || (e.touches?0.7:0.5) };
+  }
+  function start(e){ e.preventDefault(); drawing=true; const p=pos(e); lastX=p.x; lastY=p.y; draw(e); }
+  function end(){ drawing=false; ctx.beginPath(); }
+  function draw(e){
+    if(!drawing) return; e.preventDefault();
+    const p=pos(e);
+    ctx.lineCap='round'; ctx.lineJoin='round';
+    let s=size;
+    if(tool==='pen'){ ctx.strokeStyle=color; ctx.globalAlpha=1; }
+    else if(tool==='pencil'){ ctx.strokeStyle=color; ctx.globalAlpha=0.55; s=Math.max(1,size*0.7); }
+    else if(tool==='brush'){ ctx.strokeStyle=color; ctx.globalAlpha=0.85; s=size*(1+p.p); }
+    else if(tool==='eraser'){ ctx.strokeStyle=bg; ctx.globalAlpha=1; s=size*2; }
+    ctx.lineWidth=s;
+    ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(p.x,p.y); ctx.stroke();
+    lastX=p.x; lastY=p.y;
+  }
+  canvas.addEventListener('pointerdown', start);
+  canvas.addEventListener('pointermove', draw);
+  window.addEventListener('pointerup', end);
+
+  document.getElementById('saveBtn').onclick = async ()=>{
+    const dot=document.getElementById('dDot'), msg=document.getElementById('dMsg');
+    dot.classList.add('saving'); msg.textContent='Saving…';
+    const data = canvas.toDataURL('image/png');
+    const res = await fetch('/api/drawing/save', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ id: drawingId, title: document.getElementById('dTitle').value, image: data })
+    });
+    const j = await res.json();
+    dot.classList.remove('saving');
+    if(j.ok){ msg.textContent='Saved'; if(!drawingId) window.location='/drawing/'+j.id; }
+    else msg.textContent='Failed';
+  };
+</script>
+{% endblock %}

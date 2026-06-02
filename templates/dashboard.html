@@ -1,0 +1,67 @@
+{% extends "_app.html" %}
+{% set active='dashboard' %}
+{% block title %}Dashboard · MindVault{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Good to see you, {{ current_user.username }}</h1>
+    <p class="muted" style="margin:0">Here's your workspace at a glance.</p>
+  </div>
+  <div class="toolbar">
+    <a href="{{ url_for('journal_new') }}" class="btn btn-primary">＋ New Journal</a>
+    <a href="{{ url_for('drawing_new') }}" class="btn">＋ New Drawing</a>
+  </div>
+</div>
+
+<div class="grid grid-3" style="margin-bottom:24px">
+  <div class="stat"><div><div class="num">{{ stats.journals }}</div><div class="lbl">Journals</div></div></div>
+  <div class="stat"><div><div class="num">{{ stats.drawings }}</div><div class="lbl">Drawings</div></div></div>
+  <div class="stat"><div><div class="num">{{ stats.documents }}</div><div class="lbl">Documents</div></div></div>
+</div>
+
+<div class="section-title">Recent journals</div>
+{% if recent_journals %}
+<div class="grid grid-3">
+  {% for j in recent_journals %}
+  <a href="{{ url_for('journal_edit', jid=j.id) }}" class="card" style="color:inherit;display:block">
+    <h3>{{ j.title }}</h3>
+    <div class="meta">{{ j.updated_at.strftime('%b %d, %Y · %H:%M') }}</div>
+    <div class="excerpt">{{ j.content|striptags }}</div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">No journals yet. Start writing your first entry.</div>
+{% endif %}
+
+<div class="section-title">Recent documents</div>
+{% if recent_docs %}
+{% for d in recent_docs %}
+<div class="doc-row">
+  <div class="doc-info">
+    <div class="doc-icon">{{ d.file_type }}</div>
+    <div>
+      <div>{{ d.original_name }}</div>
+      <div class="meta">{{ (d.size_bytes/1024)|round(1) }} KB · {{ d.created_at.strftime('%b %d, %Y') }}</div>
+    </div>
+  </div>
+  <a class="btn" href="{{ url_for('documents_download', doc_id=d.id) }}" target="_blank">Open</a>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty">No documents uploaded yet.</div>
+{% endif %}
+
+{% if recent_drawings %}
+<div class="section-title">Recent sketches</div>
+<div class="grid grid-4">
+  {% for d in recent_drawings %}
+  <a class="card" href="{{ url_for('drawing_edit', did=d.id) }}" style="color:inherit;padding:10px">
+    <img src="{{ url_for('static', filename='drawings/' ~ d.filename) }}" style="width:100%;border-radius:8px;background:#fff" alt="">
+    <div style="margin-top:8px"><h3 style="font-size:13px;margin:0">{{ d.title }}</h3>
+    <div class="meta">{{ d.created_at.strftime('%b %d, %Y') }}</div></div>
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

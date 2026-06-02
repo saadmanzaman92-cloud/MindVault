@@ -1,0 +1,32 @@
+{% extends "_app.html" %}
+{% set active='drawings' %}
+{% block title %}Drawings · MindVault{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Drawings</h1>
+  <a href="{{ url_for('drawing_new') }}" class="btn btn-primary">＋ New Drawing</a>
+</div>
+{% if drawings %}
+<div class="grid grid-4">
+  {% for d in drawings %}
+  <div class="card" style="padding:10px">
+    <a href="{{ url_for('drawing_edit', did=d.id) }}">
+      <img src="{{ url_for('static', filename='drawings/' ~ d.filename) }}" style="width:100%;border-radius:8px;background:#fff" alt="">
+    </a>
+    <div style="margin-top:10px">
+      <h3 style="font-size:14px;margin:0">{{ d.title }}</h3>
+      <div class="meta">{{ d.created_at.strftime('%b %d, %Y · %H:%M') }}</div>
+    </div>
+    <div class="card-actions">
+      <a class="btn" href="{{ url_for('drawing_edit', did=d.id) }}">Edit</a>
+      <form method="post" action="{{ url_for('drawing_delete', did=d.id) }}" class="inline-form" onsubmit="return confirm('Delete drawing?')">
+        <button class="btn btn-danger">Delete</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">No drawings yet. <a href="{{ url_for('drawing_new') }}">Sketch something</a>.</div>
+{% endif %}
+{% endblock %}

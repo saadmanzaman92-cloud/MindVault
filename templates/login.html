@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Sign in · MindVault{% endblock %}
+{% block body %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div class="brand-name">MindVault</div>
+    </div>
+    <h2 style="margin-bottom:6px">Welcome back</h2>
+    <p class="muted" style="margin-bottom:22px">Your private workspace for thoughts, sketches & study.</p>
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat,m in msgs %}<div class="flash {{cat}}">{{m}}</div>{% endfor %}
+    {% endwith %}
+    <form method="post">
+      <div class="field"><label>Username or Email</label><input class="input" name="identifier" required autofocus></div>
+      <div class="field"><label>Password</label><input class="input" type="password" name="password" required></div>
+      <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+    </form>
+    <p class="muted" style="margin-top:18px;text-align:center">New here? <a href="{{ url_for('register') }}">Create an account</a></p>
+  </div>
+</div>
+{% endblock %}

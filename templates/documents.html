@@ -1,0 +1,93 @@
+{% extends "_app.html" %}
+{% set active='documents' %}
+{% block title %}Documents · MindVault{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Documents</h1>
+    <div class="muted" style="margin-top:4px; font-size:13px;">
+      <a href="{{ url_for('documents') }}" style="color:inherit; text-decoration:none;">🏠 Home</a>
+      {% for c in breadcrumbs %}
+        <span style="opacity:.5"> / </span>
+        <a href="{{ url_for('documents', folder=c.id) }}" style="color:inherit; text-decoration:none;">{{ c.name }}</a>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="row" style="gap:8px;">
+    <form method="post" action="{{ url_for('documents_folder_new') }}" class="inline-form" style="display:flex; gap:6px;">
+      <input type="hidden" name="parent_id" value="{{ current_folder.id if current_folder else '' }}">
+      <input type="text" name="name" placeholder="New folder name" required
+             style="padding:8px 10px; border-radius:8px; border:1px solid var(--border, #2a2a2a); background:transparent; color:inherit;">
+      <button class="btn">＋ Folder</button>
+    </form>
+    <form method="post" action="{{ url_for('documents_upload') }}" enctype="multipart/form-data" id="uploadForm">
+      <input type="hidden" name="folder_id" value="{{ current_folder.id if current_folder else '' }}">
+      <input type="file" name="files" id="fileInput" multiple hidden>
+      <button type="button" class="btn btn-primary" onclick="document.getElementById('fileInput').click()">＋ Upload files</button>
+    </form>
+  </div>
+</div>
+
+<div class="dropzone" id="dz" onclick="document.getElementById('fileInput').click()">
+  <div style="font-size:34px">⬆</div>
+  <div style="margin-top:8px"><b>Drop files here</b> or click to upload
+    {% if current_folder %} into <i>{{ current_folder.name }}</i>{% endif %}
+  </div>
+  <div class="muted" style="margin-top:4px">PDF · DOC · DOCX · PPT · PPTX · TXT · Images · up to 25 MB</div>
+</div>
+
+{% if folders %}
+<h3 style="margin-top:24px;">Folders</h3>
+<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px;">
+  {% for f in folders %}
+  <div class="doc-row" style="display:flex; align-items:center; justify-content:space-between;">
+    <a href="{{ url_for('documents', folder=f.id) }}" class="doc-info" style="text-decoration:none; color:inherit; flex:1;">
+      <div class="doc-icon">📁</div>
+      <div>
+        <div>{{ f.name }}</div>
+        <div class="meta">{{ f.documents|length }} file(s)</div>
+      </div>
+    </a>
+    <form method="post" action="{{ url_for('documents_folder_delete', folder_id=f.id) }}" class="inline-form"
+          onsubmit="return confirm('Delete folder and ALL contents?')">
+      <button class="btn btn-danger">✕</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if documents %}
+<h3 style="margin-top:24px;">Files</h3>
+<div>
+  {% for d in documents %}
+  <div class="doc-row">
+    <div class="doc-info">
+      <div class="doc-icon">{{ d.file_type }}</div>
+      <div>
+        <div>{{ d.original_name }}</div>
+        <div class="meta">{{ (d.size_bytes/1024)|round(1) }} KB · {{ d.created_at.strftime('%b %d, %Y · %H:%M') }}</div>
+      </div>
+    </div>
+    <div class="row" style="gap:6px;">
+      <a class="btn" href="{{ url_for('documents_download', doc_id=d.id) }}" target="_blank">Open</a>
+      <a class="btn" href="{{ url_for('documents_download', doc_id=d.id) }}" download>Download</a>
+      <form method="post" action="{{ url_for('documents_delete', doc_id=d.id) }}" class="inline-form" onsubmit="return confirm('Delete this file?')">
+        <button class="btn btn-danger">Delete</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% elif not folders %}
+<div class="empty" style="margin-top:20px">No documents or folders yet.</div>
+{% endif %}
+
+<script>
+  const dz=document.getElementById('dz'), fi=document.getElementById('fileInput'), form=document.getElementById('uploadForm');
+  fi.addEventListener('change',()=>form.submit());
+  ['dragenter','dragover'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.add('drag');}));
+  ['dragleave','drop'].forEach(e=>dz.addEventListener(e,ev=>{ev.preventDefault();dz.classList.remove('drag');}));
+  dz.addEventListener('drop', ev=>{ fi.files = ev.dataTransfer.files; form.submit(); });
+</script>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "_app.html" %}
+{% set active='journals' %}
+{% block title %}Journals · MindVault{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Journals</h1>
+  <div class="toolbar">
+    <form method="get" class="row">
+      <input class="input" name="q" value="{{ q }}" placeholder="Search title, content, tags…" style="min-width:240px">
+    </form>
+    <form method="post" action="{{ url_for('category_new') }}" class="row">
+      <input class="input" name="name" placeholder="New folder" style="width:140px">
+      <button class="btn" type="submit">+ Folder</button>
+    </form>
+    <a href="{{ url_for('journal_new') }}" class="btn btn-primary">＋ New Journal</a>
+  </div>
+</div>
+
+{% if categories %}
+<div class="row" style="margin-bottom:16px;flex-wrap:wrap">
+  <span class="muted">Folders:</span>
+  {% for c in categories %}<span class="tag">{{ c.name }}</span>{% endfor %}
+</div>
+{% endif %}
+
+{% if journals %}
+<div class="grid grid-3">
+  {% for j in journals %}
+  <div class="card">
+    <a href="{{ url_for('journal_edit', jid=j.id) }}" style="color:inherit">
+      <h3>{{ j.title }}</h3>
+      <div class="meta">{{ j.updated_at.strftime('%b %d, %Y · %H:%M') }}</div>
+      <div class="excerpt">{{ j.content|striptags }}</div>
+      {% if j.tags %}<div style="margin-top:10px">{% for t in j.tags.split(',') if t.strip() %}<span class="tag">#{{ t.strip() }}</span>{% endfor %}</div>{% endif %}
+    </a>
+    <div class="card-actions">
+      <a href="{{ url_for('journal_edit', jid=j.id) }}" class="btn">Open</a>
+      <form method="post" action="{{ url_for('journal_delete', jid=j.id) }}" class="inline-form" onsubmit="return confirm('Delete this journal?')">
+        <button class="btn btn-danger">Delete</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">No journals match. <a href="{{ url_for('journal_new') }}">Create one</a>.</div>
+{% endif %}
+{% endblock %}

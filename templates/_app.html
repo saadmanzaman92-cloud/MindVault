@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="side-brand">
+      <div class="brand-mark"></div>
+      <div class="brand-name">MindVault</div>
+    </div>
+    <nav class="nav">
+      <a href="{{ url_for('dashboard') }}" class="{{ 'active' if active=='dashboard' }}">🏠 Dashboard</a>
+      <a href="{{ url_for('journals') }}" class="{{ 'active' if active=='journals' }}">📓 Journals</a>
+      <a href="{{ url_for('drawings') }}" class="{{ 'active' if active=='drawings' }}">✏️ Drawings</a>
+      <a href="{{ url_for('documents') }}" class="{{ 'active' if active=='documents' }}">📁 Documents</a>
+    </nav>
+    <div class="side-bottom">
+      <div class="user-chip">
+        <div class="avatar">{{ current_user.username[:1]|upper }}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ current_user.username }}</div>
+          <a href="{{ url_for('logout') }}" style="font-size:11px;color:var(--muted)">Sign out</a>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')" style="margin-bottom:12px">☰ Menu</button>
+    {% with msgs = get_flashed_messages(with_categories=true) %}
+      {% for cat,m in msgs %}<div class="flash {{cat}}">{{m}}</div>{% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% block scripts %}{% endblock %}
+{% endblock %}
