@@ -5,6 +5,8 @@ Run:  pip install -r requirements.txt && python app.py
 """
 import os
 import uuid
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer
 from datetime import datetime
 from flask import (
     Flask, render_template, request, redirect, url_for,
@@ -34,6 +36,14 @@ app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{os.path.join(BASE_DIR, 'dat
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["UPLOAD_FOLDER"] = UPLOAD_DIR
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_MB * 1024 * 1024
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'YOUR_GMAIL@gmail.com'
+app.config['MAIL_PASSWORD'] = 'YOUR_APP_PASSWORD'
+
+mail = Mail(app)
+s = URLSafeTimedSerializer(app.secret_key)
 
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
@@ -159,6 +169,58 @@ def login():
             return redirect(url_for("dashboard"))
         flash("Invalid credentials.", "error")
     return render_template("login.html")
+
+@app.route('/forgot_password', methods=['GET','POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form['email']
+        user = User.query.filter_by(email=email).first()
+
+        if user:
+            token = s.dumps(email, salt='reset-password')
+            link = url_for(
+                'reset_password',
+                token=token,
+                _external=True
+            )
+
+            msg = Message(
+                'MindVault Password Reset',
+                sender=app.config['MAIL_USERNAME'],
+                recipients=[email]
+            )
+            msg.body = f'Reset password: {link}'
+            mail.send(msg)
+
+            flash('Reset email sent.')
+            return redirect(url_for('login'))
+
+    return render_template('forgot_password.html')
+
+
+@app.route('/reset_password/<token>', methods=['GET','POST'])
+def reset_password(token):
+    try:
+        email = s.loads(
+            token,
+            salt='reset-password',
+            max_age=3600
+        )
+    except:
+        flash('Invalid or expired link')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        user = User.query.filter_by(email=email).first()
+        new_password = request.form['password']
+
+        user.set_password(new_password)
+        db.session.commit()
+
+        flash('Password updated.')
+        return redirect(url_for('login'))
+
+    return render_template('reset_password.html')
 
 
 @app.route("/logout")
